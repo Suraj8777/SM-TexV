@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Video Generator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #00c6ff;
+            --secondary: #0072ff;
+            --dark: #0a0a1a;
+            --light: #f8f9fa;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--dark) 0%, #000 100%);
+            color: var(--light);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Video Container Fix */
+        .video-wrapper {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            height: 0;
+            overflow: hidden;
+        }
+
+        .video-wrapper video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Error Message Styling */
+        .error-message {
+            color: #ff4444;
+            padding: 1rem;
+            text-align: center;
+            display: none;
+            background: rgba(255, 68, 68, 0.1);
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        /* Previous CSS remains the same */
+        /* ... */
+    </style>
+</head>
+<body>
+    <!-- Previous HTML remains the same -->
+    <div class="container">
+        <div class="generator-container">
+            <!-- Input Section -->
+            <div class="video-output" id="video-output">
+                <div class="video-wrapper">
+                    <video controls id="output-video">
+                        <source src="" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class VideoGenerator {
+            constructor() {
+                this.API_ENDPOINT = 'http://localhost:3000/api/generate';
+                this.videoElement = document.getElementById('output-video');
+                this.errorElement = document.getElementById('error-message');
+                
+                this.initializeEventListeners();
+            }
+
+            initializeEventListeners() {
+                document.getElementById('generate-btn').addEventListener('click', () => this.generateVideo());
+            }
+
+            async generateVideo() {
+                const prompt = document.getElementById('prompt-input').value.trim();
+                if (!prompt) return this.showError('Please enter a video description');
+
+                this.showLoading(true);
+                this.clearError();
+
+                try {
+                    const response = await fetch(this.API_ENDPOINT, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            prompt,
+                            duration: document.getElementById('duration').value,
+                            resolution: document.getElementById('resolution').value
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (!response.ok) throw new Error(data.error || 'Generation failed');
+                    if (!data.videoUrl) throw new Error('Invalid video URL received');
+
+                    this.playVideo(data.videoUrl);
+                } catch (error) {
+                    this.showError(error.message);
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            playVideo(videoUrl) {
+                this.videoElement.src = videoUrl;
+                this.videoElement.load();
+                
+                // Force video reload and play
+                this.videoElement.addEventListener('loadeddata', () => {
+                    document.getElementById('video-output').style.display = 'block';
+                    this.videoElement.play().catch(error => {
+                        this.showError('Video playback failed: ' + error.message);
+                    });
+                });
+
+                this.videoElement.addEventListener('error', () => {
+                    this.showError('Failed to load video. Please try again.');
+                });
+            }
+
+            showLoading(show) {
+                document.getElementById('loading').style.display = show ? 'block' : 'none';
+            }
+
+            showError(message) {
+                this.errorElement.textContent = message;
+                this.errorElement.style.display = 'block';
+            }
+
+            clearError() {
+                this.errorElement.style.display = 'none';
+            }
+        }
+
+        // Initialize the video generator
+        const videoGen = new VideoGenerator();
+    </script>
+</body>
+</html>
